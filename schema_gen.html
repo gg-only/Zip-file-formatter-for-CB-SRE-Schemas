@@ -4,90 +4,218 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Schema File Formatter For CB</title>
-
-    <!-- JSZip -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-
     <style>
         body {
-            font-family: Arial, sans-serif;
-            background: #f5f7fa;
-            padding: 20px;
+            font-family: 'Arial', sans-serif;
+            background-color: #f9f9f9;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
         }
-        h2 {
-            margin-bottom: 10px;
-        }
-        textarea {
+ 
+        .container {
             width: 100%;
-            height: 220px;
-            padding: 10px;
-            font-family: monospace;
-            margin-bottom: 10px;
+            max-width: 400px;
+            background-color: #ffffff;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            text-align: center;
         }
-        button {
-            padding: 10px 16px;
-            background: #2563eb;
+ 
+        h1 {
+            font-size: 2rem;
+            color: #333;
+            margin-bottom: 20px;
+        }
+ 
+        label {
+            font-size: 1.1rem;
+            margin-bottom: 20px;
+            display: block;
+            color: #555;
+        }
+ 
+        #jsonFile {
+            display: none;
+        }
+ 
+        #jsonFileButton {
+            background-color: #007BFF;
             color: white;
-            border: none;
+            font-weight: bold;
+            padding: 12px 24px;
             cursor: pointer;
-            border-radius: 4px;
+            border: none;
+            border-radius: 5px;
+            display: inline-block;
+            position: relative;
+            margin-bottom: 20px;
         }
-        button:hover {
-            background: #1e40af;
+ 
+        #jsonFileButton::after {
+            content: '📁';
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
         }
-        .error {
-            color: red;
+ 
+        #generateButton {
+            background-color: #28A745;
+            color: white;
+            font-weight: bold;
+            padding: 12px 24px;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            width: 100%;
+            margin-top: 20px;
+        }
+ 
+        #generateButton:hover {
+            background-color: #218838;
+        }
+ 
+        .info {
+            font-size: 1rem;
+            color: #5bc0de;
             margin-top: 10px;
         }
-        .success {
-            color: green;
+        .message {
+            font-size: 1rem;
+            color: #d9534f;
             margin-top: 10px;
+        }
+ 
+        .emoji-container {
+          position: absolute;
+          top: 85px;
+          right: 33%;
+          font-size: 2em;
+        }
+ 
+        @media (max-width: 600px) {
+            h1 {
+                font-size: 1.5rem;
+            }
+            label, button {
+                font-size: 1rem;
+            }
         }
     </style>
 </head>
 <body>
-
-<h2>Schema File Formatter For CB</h2>
-
-<p>Paste your JSON schema below:</p>
-
-<textarea id="jsonInput" placeholder="Paste JSON here..."></textarea>
-
-<button onclick="generateZip()">Generate Schema ZIP</button>
-
-<div id="message"></div>
-
-<script>
-function generateZip() {
-    const messageDiv = document.getElementById("message");
-    messageDiv.innerHTML = "";
-
-    let jsonData;
-    try {
-        jsonData = JSON.parse(document.getElementById("jsonInput").value);
-    } catch (e) {
-        messageDiv.innerHTML = "<div class='error'>Invalid JSON format</div>";
-        return;
-    }
-
-    const zip = new JSZip();
-
-    // Create schema.json
-    zip.file("schema.json", JSON.stringify(jsonData, null, 4));
-
-    // Optional metadata file
-    zip.file("README.txt", "Generated using Schema File Formatter For CB");
-
-    zip.generateAsync({ type: "blob" })
-        .then(function (content) {
-            const link = document.createElement("a");
-            link.href = URL.createObjectURL(content);
-            link.download = "schema.zip";
-            link.click();
-            messageDiv.innerHTML = "<div class='success'>Schema ZIP generated successfully</div>";
-        });
-}
-</script>
-
+ 
+    <div class="container">
+        <h1>Schema File Formatter For CB</h1>
+ 
+        <label for="jsonFile">Upload JSON File</label>
+        <input type="file" id="jsonFile" accept=".json" onchange="handleFileUpload(event)" />
+        <button id="jsonFileButton" onclick="document.getElementById('jsonFile').click()">Choose File</button>
+       
+        <p class="info">The zip file will be auto-downloaded to your system.</p>
+ 
+        <button id="generateButton" onclick="generateFolderStructure()">Download zip file</button>
+ 
+        <div id="message" class="message"></div>
+    </div>
+       <div class="emoji-container">🤖</div>
+    <script>
+        function handleFileUpload(event) {
+            const jsonFile = event.target.files[0];
+            if (!jsonFile) {
+                showMessage("Please upload a valid JSON file.");
+                return;
+            }
+ 
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                try {
+                    const jsonData = JSON.parse(event.target.result);
+                    validateAndProcessJson(jsonData, jsonFile);
+                } catch (e) {
+                    showMessage("Error reading or parsing JSON file.");
+                }
+            };
+            reader.readAsText(jsonFile);
+        }
+ 
+        function validateAndProcessJson(jsonData, jsonFile) {
+            let filename = "";
+            const allOf = jsonData.allOf;
+            let bindingType = "unknown";
+ 
+            if (allOf && Array.isArray(allOf)) {
+                for (let i = 0; i < allOf.length; i++) {
+                    const ref = allOf[i]["$ref"];
+                    if (ref) {
+                        const refPath = ref.split('/');
+                        bindingType = refPath[refPath.length - 2];
+                    }
+ 
+                    const properties = allOf[i].properties;
+                    if (properties && properties.filename && properties.filename.enum) {
+                        filename = properties.filename.enum[0];
+                        break;
+                    }
+                }
+            }
+ 
+            if (!filename) {
+                showMessage("The 'filename' value is missing or incorrect in the JSON.");
+                return;
+            }
+ 
+            generateZipFile(filename, bindingType, jsonFile, jsonData);
+        }
+ 
+        function generateZipFile(filename, bindingType, jsonFile, jsonData) {
+            const zipFileName = `schemas_${filename}.zip`;
+ 
+            const zip = new JSZip();
+            zip.folder('schemas').folder(bindingType).file(jsonFile.name, JSON.stringify(jsonData, null, 2));
+ 
+            zip.generateAsync({ type: "blob" })
+                .then(function(content) {
+                    const link = document.createElement('a');
+                    link.href = URL.createObjectURL(content);
+                    link.download = zipFileName;
+                    link.click();
+                })
+                .catch(() => showMessage("An error occurred while creating the ZIP file."));
+        }
+ 
+        function generateFolderStructure() {
+            const jsonFileInput = document.getElementById('jsonFile');
+            const jsonFile = jsonFileInput.files[0];
+           
+            if (!jsonFile) {
+                showMessage("Please upload a JSON file.");
+                return;
+            }
+           
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                try {
+                    const jsonData = JSON.parse(event.target.result);
+                    validateAndProcessJson(jsonData, jsonFile);
+                } catch (e) {
+                    showMessage("Error reading or parsing JSON file.");
+                }
+            };
+            reader.readAsText(jsonFile);
+        }
+ 
+        function showMessage(message) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.textContent = message;
+        }
+    </script>
+ 
 </body>
 </html>
