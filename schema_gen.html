@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Schema File Formatter For CB</title>
+
+    <!-- JSZip -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f5f7fa;
+            padding: 20px;
+        }
+        h2 {
+            margin-bottom: 10px;
+        }
+        textarea {
+            width: 100%;
+            height: 220px;
+            padding: 10px;
+            font-family: monospace;
+            margin-bottom: 10px;
+        }
+        button {
+            padding: 10px 16px;
+            background: #2563eb;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        button:hover {
+            background: #1e40af;
+        }
+        .error {
+            color: red;
+            margin-top: 10px;
+        }
+        .success {
+            color: green;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+
+<h2>Schema File Formatter For CB</h2>
+
+<p>Paste your JSON schema below:</p>
+
+<textarea id="jsonInput" placeholder="Paste JSON here..."></textarea>
+
+<button onclick="generateZip()">Generate Schema ZIP</button>
+
+<div id="message"></div>
+
+<script>
+function generateZip() {
+    const messageDiv = document.getElementById("message");
+    messageDiv.innerHTML = "";
+
+    let jsonData;
+    try {
+        jsonData = JSON.parse(document.getElementById("jsonInput").value);
+    } catch (e) {
+        messageDiv.innerHTML = "<div class='error'>Invalid JSON format</div>";
+        return;
+    }
+
+    const zip = new JSZip();
+
+    // Create schema.json
+    zip.file("schema.json", JSON.stringify(jsonData, null, 4));
+
+    // Optional metadata file
+    zip.file("README.txt", "Generated using Schema File Formatter For CB");
+
+    zip.generateAsync({ type: "blob" })
+        .then(function (content) {
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(content);
+            link.download = "schema.zip";
+            link.click();
+            messageDiv.innerHTML = "<div class='success'>Schema ZIP generated successfully</div>";
+        });
+}
+</script>
+
+</body>
+</html>
